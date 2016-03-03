@@ -1,8 +1,8 @@
-{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf340
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \margl1440\margr1440\vieww12600\viewh10200\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\fs28 \cf0 -------------\
 Mar 2 EA\
@@ -40,4 +40,13 @@ Mar 2 EA\
 - is anything going to be upset about force quitting the processes? do we need to close the log files?\
  - very possible that I'm doing waiting wrong (not actually using wait())\
 - SUMMARY: played around, looked into threads and multiprocessing and writing to file, drafted skeleton code for processes and initializer with missing pieces (messaging and logging) in lines starting with ###\
-- NEXT STEPS: talk about options for log and message formats, design first pass analysis, figure out sockets}
+- NEXT STEPS: talk about options for log and message formats, design first pass analysis, figure out sockets\
+\
+Meeting Emma and Eric 3/3/16:\
+- Need to do socket connections\
+- how to format messages and log:\
+	- messages: only need logical clock, check that it\'92s an int\
+	- log format: system time \\t clock time \\t some encoding for operation\
+	- header for log file?\
+- Eric does socket by sunday night\
+- code for analyzing gaps and all that (plot logical clocks for each process vs system clock)}
