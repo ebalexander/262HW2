@@ -1,3 +1,10 @@
+# E Alexander & E Balkanski
+# Mar 2016 CS 262
+#
+# Launches 3 processes with different time scales and address spaces.
+# They maintain logical clocks and send messages (LC values) to each other.
+# System time and LC values are logged for each process.
+
 import socket
 import time
 
@@ -5,9 +12,7 @@ from random import randint
 from threading import Thread
 from multiprocessing import Process
 
-msg_queue = []
-
-def listen(myport):
+def listen(myport,msg_queue):
     # if neigh1 or neigh2 sends a message, add it to msg_queue
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('', myport))
@@ -16,27 +21,28 @@ def listen(myport):
     print 'Connected by', addr
     while 1:
         data = conn.recv(1024)
-        print "Received: " 
-        print data
+        print "Received:", data
         if not data: break
         msg_queue.insert(0,int(data))
     conn.close()
+
+##def processmain
     
 
 def process(timescale,logfilename,listenport1, listenport2, sendport1,sendport2):
-    # start logfile
-    logfile = open(logfilename,'w') # 'a' to append
-
+    
     # start listening
-    listen_thread1 = Thread(target=listen,args=(listenport1,))
+    msg_queue = []
+    
+    listen_thread1 = Thread(target=listen,args=(listenport1,msg_queue))
     listen_thread1.start()
 
-    listen_thread2 = Thread(target=listen,args=(listenport2,))
-    listen_thread2.start()
+    listen_thread2 = Thread(target=listen,args=(listenport2,msg_queue))
+    listen_thread2.start()	
     
     # start clocks
-    LC = 1
-    now = int(time.time())
+    LC = 0
+    now = time.time()
     
     # wait for all sockets to be listening
     time.sleep(2)
@@ -47,18 +53,34 @@ def process(timescale,logfilename,listenport1, listenport2, sendport1,sendport2)
     s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s2.connect(('', sendport2))
     
+    # start logfile, write header
+    logfile = open(logfilename,'w',False) # 'a' to append, False on buffering means immediate write
+    logfile.write('Timescale:' + str(timescale) + '\n' +
+                  'Ops:' + '\n' +
+                  '0' + ' receive' + '\n' +
+                  '1' + ' send to neighbor 1' + '\n' +
+                  '2' + ' send to neighbor 2' + '\n' +
+                  '3' + ' send to both neighbors' + '\n' +
+                  '4-10' + ' no-op' + '\n' +
+                  '*************************************** \n')
+                  
     # run
     while True:
-        # wait to enforce timescale (should maybe do sleeping?)
-        if int(time.time())>(now+1/timescale):
-            now = int(time.time())
+        ##threading.Event.wait.
+        # wait to enforce timescale
+        ##threading.wait_for(recieve or (time.time()>(now+1/timescale)), timeout=1/timescale)
+        if int(time.time())>(now+1./timescale):
+            now = time.time()
 
             # check messages
             if len(msg_queue):
                 # read message and remove from queue
                 senderLC = msg_queue.pop()
+                print "MyLC:", LC, "Received:", senderLC
                 # update LC
-                LC = max(LC,senderLC)+1 
+                LC = max(LC,senderLC)+1
+                # update log
+                logfile.write(str(time.time())+ '\t' + str(LC) + '\t0\n')
             else:
                 # randomly select op
                 op = randint(1,10)
@@ -78,21 +100,21 @@ def process(timescale,logfilename,listenport1, listenport2, sendport1,sendport2)
                 # update LC
                 LC += 1
 
-        # update log
-        ### unclear what this will look like ###
-        # should possibly go inside if/else
-        logfile.write('log string \n')
+                # update log
+                logfile.write(str(time.time())+ '\t' + str(LC) + '\t' + str(op) + '\n')
 
+# bootstrapping process: makes sockets and logs and starts the processes
 def main():
     # set timescales
-    ts1 = randint(1,6)
-    ts2 = randint(1,6)
-    ts3 = randint(1,6)
+    ts1 = 1#randint(1,6)
+    ts2 = 2#randint(1,6)
+    ts3 = 4#randint(1,6)
+    print ts1, ts2, ts3
 
     # make logfile names
-    log1 = './.logs/log1'
-    log2 = './.logs/log2'
-    log3 = './.logs/log3'
+    log1 = './logs/log1'
+    log2 = './logs/log2'
+    log3 = './logs/log3'
 
     # ports for sockets 
     port1to2 = 1831
