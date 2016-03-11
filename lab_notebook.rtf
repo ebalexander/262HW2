@@ -1,4 +1,4 @@
-{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
+{\rtf1\ansi\ansicpg1252\cocoartf1348\cocoasubrtf170
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 {\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{hyphen\}}{\leveltext\leveltemplateid1\'01\uc0\u8259 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}}
@@ -44,6 +44,10 @@ Mar 2 EA\
 - SUMMARY: played around, looked into threads and multiprocessing and writing to file, drafted skeleton code for processes and initializer with missing pieces (messaging and logging) in lines starting with ###\
 - NEXT STEPS: talk about options for log and message formats, design first pass analysis, figure out sockets\
 \
+-------------\
+Mar 3 EB\
+-------------\
+\
 Meeting Emma and Eric 3/3/16:\
 - Need to do socket connections\
 - how to format messages and log:\
@@ -54,6 +58,14 @@ Meeting Emma and Eric 3/3/16:\
 - code for analyzing gaps and all that (plot logical clocks for each process vs system clock): Emma\
 - log code: Emma\
 - next meeting: monday\
+\
+-------------\
+Mar 5 EB\
+-------------\
+\
+Read about python sockets at {\field{\*\fldinst{HYPERLINK "https://docs.python.org/2/library/socket.html"}}{\fldrslt https://docs.python.org/2/library/socket.html}} and played around with the two examples in section 17.2.2\
+For our purposes, added 6 sockets, one for each (from i, to j) for each pair (i,j) of processes.\
+Needed to have each process sleep for 2 seconds after they start listening and before they connect so that they always connect to a socket that is already listening.\
 \
 -------------\
 Mar 8 EA\
@@ -69,12 +81,18 @@ Definitely need to sleep, which means working out this GIL business.\
 \ls1\ilvl0\cf0 -> online tutorials don't address this problem, hard to find info on it, but threads can .wait_for(predicate,timeout), http://jessenoller.com/blog/2009/02/01/python-threads-and-the-global-interpreter-lock night be helpful\
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 \cf0 -> should have a lock on the shared message queue, though\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 \
+\
 SUMMARY: took out global message queue, added logging, \
 		  drafted analysis code (still want to do max(LC)-min(LC) hist),\
 		  added comments, general debugging\
 NEXT STEPS: work out sleeping and listening, honestly super confused about what we are and aren't allowed to use for this assignment, thought it was on the course message board but it isn't\
 \
-\
+-------------\
+Mar 11 EB\
+-------------\
+Trying to fix the problem with having two threads for each process where one of these two that needs to be timed and where they both share some resource (the queue).\
+Changing the code so that there is only one thread per process and the listening for incoming messages happens at the end of the main loop. This shouldn\'92t be a problem for the timer since checking for messages is much faster than the time gap for any timescale. \
+A few notes:\
+ - need to be careful in which order the setting up of the sockets happen to avoid deadlocks\
+ - made the sockets non-blocking so that when there is no message to be received, each process can proceed to another iteration of the main loop instead of waiting for a message.\
 }

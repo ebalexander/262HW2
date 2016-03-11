@@ -9,49 +9,59 @@ import socket
 import time
 
 from random import randint
-from threading import Thread
 from multiprocessing import Process
 
-def listen(myport,msg_queue):
-    # if neigh1 or neigh2 sends a message, add it to msg_queue
+def listenSocket(listenport):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('', myport))
+    s.bind(('', listenport))
     s.listen(1)
     conn, addr = s.accept()
     print 'Connected by', addr
-    while 1:
-        data = conn.recv(1024)
-        print "Received:", data
-        if not data: break
-        msg_queue.insert(0,int(data))
-    conn.close()
+    return conn, addr
 
-##def processmain
+def sendSocket(sendport):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('', sendport))
+    return s
     
-
-def process(timescale,logfilename,listenport1, listenport2, sendport1,sendport2):
+def process(p, timescale,logfilename,listenport1, listenport2, sendport1,sendport2):
     
-    # start listening
     msg_queue = []
     
-    listen_thread1 = Thread(target=listen,args=(listenport1,msg_queue))
-    listen_thread1.start()
+    # set up all sockets for listening and sending messages
+    # add some waits so that other processes have time to set up the listening
+    # do it in different order to avoid deadlocks
+    if p == 1:
+        conn1, addr1 = listenSocket(listenport1)
+        conn2, addr2 = listenSocket(listenport2)
+        time.sleep(2)
+        s1 = sendSocket(sendport1)
+        s2 = sendSocket(sendport2)    
+    
+    if p == 2:
+        time.sleep(1)
+        s1 = sendSocket(sendport1)      
+        conn1, addr1 = listenSocket(listenport1)
+        conn2, addr2 = listenSocket(listenport2)
+        time.sleep(3)
+        s2 = sendSocket(sendport2)
 
-    listen_thread2 = Thread(target=listen,args=(listenport2,msg_queue))
-    listen_thread2.start()	
+    if p == 3:
+        time.sleep(2)
+        s1 = sendSocket(sendport1)
+        conn1, addr1 = listenSocket(listenport1)
+        time.sleep(2)
+        s2 = sendSocket(sendport2)
+        conn2, addr2 = listenSocket(listenport2)
+        
+    # non-blocking sockets so that we can continue the main loop even
+    # if we didn't receive anything
+    conn1.setblocking(0)
+    conn2.setblocking(0)
     
     # start clocks
     LC = 0
     now = time.time()
-    
-    # wait for all sockets to be listening
-    time.sleep(2)
-
-    #start sockets to send messages
-    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s1.connect(('', sendport1))
-    s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s2.connect(('', sendport2))
     
     # start logfile, write header
     logfile = open(logfilename,'w',False) # 'a' to append, False on buffering means immediate write
@@ -69,7 +79,9 @@ def process(timescale,logfilename,listenport1, listenport2, sendport1,sendport2)
         ##threading.Event.wait.
         # wait to enforce timescale
         ##threading.wait_for(recieve or (time.time()>(now+1/timescale)), timeout=1/timescale)
+       
         if int(time.time())>(now+1./timescale):
+
             now = time.time()
 
             # check messages
@@ -103,7 +115,29 @@ def process(timescale,logfilename,listenport1, listenport2, sendport1,sendport2)
                 # update log
                 logfile.write(str(time.time())+ '\t' + str(LC) + '\t' + str(op) + '\n')
 
-# bootstrapping process: makes sockets and logs and starts the processes
+        # listen for messages to add to the queue
+        try:
+            data1 = conn1.recv(1024)
+            print "Received:", data1
+            if not data1: break
+            msg_queue.insert(0,int(data1))
+        except:
+            pass
+        
+        try:
+            data2 = conn2.recv(1024)
+            print "Received:", data2
+            if not data2: break
+            msg_queue.insert(0,int(data2))
+        except:
+            pass
+        
+    conn1.close()
+    conn2.close()
+    
+    
+    
+# bootstrapping process: makes logs and starts the processes
 def main():
     # set timescales
     ts1 = 1#randint(1,6)
@@ -117,17 +151,17 @@ def main():
     log3 = './logs/log3'
 
     # ports for sockets 
-    port1to2 = 1831
-    port1to3 = 2648
-    port2to1 = 3833
-    port2to3 = 4831
-    port3to1 = 5648
-    port3to2 = 6833
+    port1to2 = 4831
+    port1to3 = 5648
+    port2to1 = 6833
+    port2to3 = 7831
+    port3to1 = 8648
+    port3to2 = 9833
    
     # make and start processes
-    p1 = Process(target=process,args=(ts1,log1,port2to1,port3to1,port1to2,port1to3))
-    p2 = Process(target=process,args=(ts2,log2,port1to2,port3to2,port2to1,port2to3))
-    p3 = Process(target=process,args=(ts3,log3,port1to3,port2to3,port3to1,port3to2))
+    p1 = Process(target=process,args=(1,ts1,log1,port2to1,port3to1,port1to2,port1to3))
+    p2 = Process(target=process,args=(2,ts2,log2,port1to2,port3to2,port2to1,port2to3))
+    p3 = Process(target=process,args=(3,ts3,log3,port1to3,port2to3,port3to1,port3to2))
     p1.start()
     p2.start()
     p3.start()
