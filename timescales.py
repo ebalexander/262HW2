@@ -36,7 +36,7 @@ def process(p, timescale,logfilename,listenport1, listenport2, sendport1,sendpor
         conn2, addr2 = listenSocket(listenport2)
         time.sleep(2)
         s1 = sendSocket(sendport1)
-        s2 = sendSocket(sendport2)    
+        s2 = sendSocket(sendport2)   
     
     if p == 2:
         time.sleep(1)
@@ -73,17 +73,15 @@ def process(p, timescale,logfilename,listenport1, listenport2, sendport1,sendpor
                   '3' + ' send to both neighbors' + '\n' +
                   '4-10' + ' no-op' + '\n' +
                   '*************************************** \n')
-                  
+              
     # run
     while True:
-        ##threading.Event.wait.
-        # wait to enforce timescale
-        ##threading.wait_for(recieve or (time.time()>(now+1/timescale)), timeout=1/timescale)
-       
-        if int(time.time())>(now+1./timescale):
 
+       # verify if it's time for a new operation
+        if time.time() > (now+1./timescale):
+            
             now = time.time()
-
+            
             # check messages
             if len(msg_queue):
                 # read message and remove from queue
@@ -92,43 +90,43 @@ def process(p, timescale,logfilename,listenport1, listenport2, sendport1,sendpor
                 # update LC
                 LC = max(LC,senderLC)+1
                 # update log
-                logfile.write(str(time.time())+ '\t' + str(LC) + '\t0\n')
+                logfile.write(str(time.time())+ '\t' + str(LC) + '\t0\t' + str(len(msg_queue) + 1) + '\n')
             else:
                 # randomly select op
                 op = randint(1,10)
                 # perform pop
                 if op==1:
                     # send LC to neigh1
-                    s1.send(str(LC))
+                    s1.send(str(LC) + ":")
                 elif op==2:
                     # send LC to neigh2
-                    s2.send(str(LC)) 
+                    s2.send(str(LC) + ":") 
                 elif op==3:
                     # send LC to neigh1 and neigh2
-                    s1.send(str(LC))
-                    s2.send(str(LC))
+                    s1.send(str(LC) + ":")
+                    s2.send(str(LC) + ":")
                 # else: "internal event", no-op
 
                 # update LC
                 LC += 1
 
                 # update log
-                logfile.write(str(time.time())+ '\t' + str(LC) + '\t' + str(op) + '\n')
+                logfile.write(str(time.time())+ '\t' + str(LC) + '\t' + str(op) + '\t' + str(len(msg_queue)) + '\n')
 
         # listen for messages to add to the queue
         try:
             data1 = conn1.recv(1024)
-            print "Received:", data1
+            print "Received:", data1, int(data1.split(":")[-2])
             if not data1: break
-            msg_queue.insert(0,int(data1))
+            msg_queue.insert(0,int(data1.split(":")[-2]))
         except:
             pass
         
         try:
             data2 = conn2.recv(1024)
-            print "Received:", data2
+            print "Received:", data2, int(data2.split(":")[-2])
             if not data2: break
-            msg_queue.insert(0,int(data2))
+            msg_queue.insert(0,int(data2.split(":")[-2]))
         except:
             pass
         
@@ -139,24 +137,34 @@ def process(p, timescale,logfilename,listenport1, listenport2, sendport1,sendpor
     
 # bootstrapping process: makes logs and starts the processes
 def main():
-    # set timescales
-    ts1 = 1#randint(1,6)
-    ts2 = 2#randint(1,6)
-    ts3 = 4#randint(1,6)
-    print ts1, ts2, ts3
 
+    # set timescales
+    tempts1 = randint(1,6)
+    tempts2 = randint(1,6)
+    tempts3 = randint(1,6)
+    ts = [tempts1,tempts2,tempts3]
+    # ts1 <= ts2 <= ts3
+    ts1 = min(ts)
+    ts.remove(ts1)
+    ts2 = min(ts)
+    ts3 = max(ts)
+    
+    print ts1,ts2,ts3    
+    
     # make logfile names
     log1 = './logs/log1'
     log2 = './logs/log2'
     log3 = './logs/log3'
 
+
     # ports for sockets 
-    port1to2 = 4831
-    port1to3 = 5648
-    port2to1 = 6833
-    port2to3 = 7831
-    port3to1 = 8648
-    port3to2 = 9833
+    # create one socket for each (from i, to j) for each pair (i,j) of processes.
+    port1to2 = 19834 
+    port1to3 = 23645 
+    port2to1 = 32836 
+    port2to3 = 43837 
+    port3to1 = 54648 
+    port3to2 = 45839 
    
     # make and start processes
     p1 = Process(target=process,args=(1,ts1,log1,port2to1,port3to1,port1to2,port1to3))

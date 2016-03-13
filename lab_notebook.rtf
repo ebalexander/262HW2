@@ -91,8 +91,37 @@ NEXT STEPS: work out sleeping and listening, honestly super confused about what 
 Mar 11 EB\
 -------------\
 Trying to fix the problem with having two threads for each process where one of these two that needs to be timed and where they both share some resource (the queue).\
-Changing the code so that there is only one thread per process and the listening for incoming messages happens at the end of the main loop. This shouldn\'92t be a problem for the timer since checking for messages is much faster than the time gap for any timescale. \
+Changing the code so that there is only one thread per process and the listening for incoming messages happens at the end of the main loop. This shouldn\'92t be a problem for the timer since checking for messages is much faster than the time gap for any timescale. Additionally, performing operations also happens much faster than the time gaps between which messages are being sent,  so each machine will still receive messages one at a time from other machines.\
 A few notes:\
  - need to be careful in which order the setting up of the sockets happen to avoid deadlocks\
  - made the sockets non-blocking so that when there is no message to be received, each process can proceed to another iteration of the main loop instead of waiting for a message.\
-}
+\
+-------------\
+Mar 13 EB\
+-------------\
+Adding markers to the end of a message because if a machine starts a bit later than an other, it could be that when it reads messages from a socket, there are several messages that have already been sent, in which case it just wants to read the last message sent to catch up on the LC. Once all machines are started, we don\'92t really need markers since all machines will receive messages one at a time.\
+\
+Analyzing data.\
+\
+For the jump counts, removed all jumps of size 1 because they are just regular updates of the time clock and it\'92s easier to read the histogram without them.\
+For the gaps plot, for each second where there is at least one logical clock value for each machine, we consider the smallest logical clock recorded for that second for each machine.\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+Forgot to add length of the queues to the log files, restarting all experiments\
+\
+\
+
+\b Discussion of the data:
+\b0 \
+\
+The plots are in the allFigures files, each row of plots correspond to a run of the model. For each run, we have four plots: the first is the logical clock of the different machines vs the system time, the second is the largest gap in the logical clocks of the machines vs the system time, the third is a histogram of the counts of the different sizes of jumps when a logical clock gets updated by receiving a message and the last is the length of the message queue for each machine vs system time.\
+\
+We observe that the logical clock of the machine with the highest number of clock cycles per second is the largest logical clock at anytime, which is expected since it updates its logical clock faster than the other machines. The differences between the logical clock of this machine and the logical clock of the other machines at a specific system time varies differently depending on the settings. \
+\
+When the number of clock cycles per second are close for the different machines, for example in the runs corresponding to the 3rd and 5th rows, the logical clock values mostly stay synchronize. They sometime fall a bit behind for the machines with the lowest number of clock cycles but regularly catch up. This behavior implies small gaps in the logical clock and small jumps when the logical clock gets updated after receiving a message.\
+\
+When the number of clock cycles per second are very different for the different machines, for example in the run corresponding to the 4th row, and to a lesser extent the 1st and 2nd rows, the slower machines either rarely catch up the faster machines in terms of logical clocks, or even never catch up. Never catching up, for examples in the 4h row, is due to the length of the message queue always growing, so when the machine reads a message from the queue, these messages are increasingly out of date as the system time increases and this machine then falls behind in logical clock value. Even if the messages accumulate in the message queue, a machine is sometime able to catch up due to the randomness involved in the frequencies in which messages are received, as we can observe in the 2nd row. In either case, when machines fall behind in logical clocks, we of course observe large gaps in the logical clock but also higher jumps in this logical clock.\
+\
+A very slight change in the model would have immensely helped synchronizing the different machines and prevented some machines to fall behind. If instead of having a queue that was first in first out, we had a stack that was last in first out, then the slower machines would regularly be able to catch up since they would get the most up to date logical clocks of the other machines and not old messages. \
+\
+We also did runs with smaller variation in the clock cycles and a smaller probability of the event being internal. The figDiff file are the plots obtained for a typical run observed in such a setting, in this specific example, the clock cycles are 3.1, 3.3, and 3.5 and we pick a random number between 1 and 5 instead of 1 and 10 to reduce the probability of an internal event. With these plots, we observe that the logical clocks are always almost synchronized, with very small gaps and jumps in the logical clocks.}
